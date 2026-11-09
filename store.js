@@ -75,3 +75,9 @@ const known=new Set($$('.e-c-box h4').map(e=>e.textContent.trim()));const extra=
 persistCart();
 
 import('./live.js');
+
+// Header navigation and restored original hero photograph.
+const adminAnchor=document.createElement('a');adminAnchor.href=link('/admin/');adminAnchor.className='ind-admin-link';adminAnchor.textContent='ניהול';adminAnchor.setAttribute('aria-label','כניסה לפאנל הניהול');
+const cartButton=document.querySelector('.ind-actions [data-open-cart]');if(cartButton&&!document.querySelector('.ind-admin-link'))cartButton.after(adminAnchor);
+const hero=document.querySelector('#section-169');if(hero){const original='https://files.cdn-files-a.com/uploads/9824204/2000_670d10aff21f6.jpg';hero.style.backgroundImage='url("'+original+'")';hero.style.backgroundSize='cover';hero.style.backgroundPosition='center';for(const image of hero.querySelectorAll('.headers-image')){image.style.backgroundImage='url("'+original+'")';image.dataset.bg=original}const subtitle=hero.querySelector('h2');if(subtitle)subtitle.textContent='אומנות בסריגה - בובות בבגדים מחמדים'}
+const adminStyle=document.createElement('style');adminStyle.textContent='.ind-actions .ind-admin-link{font-size:16px;font-weight:700;white-space:nowrap;text-decoration:none}.ind-admin-link:hover{text-decoration:underline}.ind-header nav{gap:clamp(10px,1.4vw,25px)}@media(max-width:1180px) and (min-width:851px){.ind-header{padding-inline:16px;gap:16px}.ind-header nav a{font-size:15px}.ind-actions{gap:8px}}';document.head.append(adminStyle);
