@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en" dir="rtl">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="user-scalable=no">
+    <meta name="robots" content="noindex, nofollow">
+	<title>SITE123 Map Display</title>
+    <style>
+        body {
+            padding: 0;
+            margin: 0;
+        }
+        /* map box marker design */
+        .map-box-marker {
+          background-image: url('/files/vendor/mapBox/images/mapbox-icon.png');
+          background-size: cover;
+          width: 50px;
+          height: 50px;
+          border-radius: 50%;
+          cursor: pointer;
+        }
+        .embedModeHidden {
+            display: none !important;
+        }
+        .embedMode {
+            cursor: pointer;
+            position: absolute;
+            left: 10px;
+            top: 10px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 3px;
+            background-color: #fff;
+            display: flex;
+        }
+        html[dir="rtl"] .embedMode {
+            left: auto;
+            right: 10px;
+        }
+        .embedMode:hover {
+            background-color: #f3f3f3;
+        }
+        .static-map {
+           width:100%;
+           height:100%;
+           background-position:center;
+           background-size:cover;
+        }
+
+
+        /*
+        Google map skeleton loader - Show skeleton before the google map is loaded
+        source: https://web-crunch.com/how-to-create-skeleton-screen-loading-effect/
+        --------------------*/
+        @keyframes gmapSkeletonloading {
+            100% {
+                transform: translateX(100%);
+            }
+        }
+        .gmap-skeleton:after {
+            position: absolute;
+            z-index: 1;
+            display: block;
+            content: '';
+            width: 100%;
+            height: 100%;
+            transform: translateX(-100%);
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .2), transparent);
+            animation: gmapSkeletonloading 1.5s infinite;
+        }
+        .gmap-skeleton {
+            height: 100%;
+            width: 100%;
+            position: relative;
+            background-color: #c4c9cc;
+            overflow: hidden;
+        }
+        .gmap-skeleton .fake-item {
+            position: absolute;
+            z-index: 2;
+            background-color: white;
+            padding: 1px;
+            margin: 10px;
+            box-shadow: rgba(0, 0, 0, 0.3) 0px 1px 4px -1px;
+            border-radius: 2px;
+        }
+        .gmap-skeleton .fake-info-bar {
+            left: 0;
+            top: 0;
+            width: 244px;
+            height: 52px;
+        }
+        .gmap-skeleton .fake-map-btn {
+            bottom: 18px;
+            left: 10px;
+            height: 38px;
+            width: 38px;
+        }
+        .gmap-skeleton .fake-zoom-btns {
+            bottom: 18px;
+            right: 10px;
+            width: 40px;
+            height: 81px;
+        }
+    </style>
+        <!-- jquery -->
+    <script src="https://cdn-cms-s-8-4.f-static.net/files/js/jquery.js?v=vc1794143000" crossorigin="anonymous"></script>
+    <script>
+        var mapAutoRefresh = {
+            refreshCount: 0,
+            maxRefreshCount: 5,
+            canRefresh: function() {
+                return this.refreshCount < this.maxRefreshCount;
+            },
+            doRefresh: function() {
+                if (!this.canRefresh()) return;
+                var url = new URL(window.location.href);
+                url.searchParams.set('_rc', this.refreshCount + 1);
+                window.location.href = url.toString();
+            }
+        };
+        
+        // Global error handler for Google Maps API errors
+        window.gm_authFailure = function() {
+            // This function is called by Google Maps when authentication fails
+            mapAutoRefresh.doRefresh();
+        };
+        
+        // Catch Google Maps JavaScript API errors (RefererNotAllowedMapError, etc.)
+        window.addEventListener('error', function(e) {
+            if (e.message && (
+                e.message.indexOf('Google Maps') !== -1 ||
+                e.message.indexOf('clientHeight') !== -1 ||
+                e.message.indexOf('RefererNotAllowedMapError') !== -1
+            )) {
+                mapAutoRefresh.doRefresh();
+            }
+        });
+    </script>
+</head>
+<body>
+    <!-- content -->
+    <div style="width:100%;height:100vh;overflow: hidden;">
+        <!-- get skeleton template -->
+        <div class="gmap-skeleton" data-type="embeded">
+            <!-- top left -->
+            <div class="fake-info-bar fake-item"></div>
+            <!-- bottom left -->
+            <div class="fake-map-btn fake-item"></div>
+            <!-- bottom right -->
+            <div class="fake-zoom-btns fake-item"></div>
+        </div>
+
+                        <!-- Map -->
+            <iframe class="map-frame" src="https://www.google.com/maps/embed/v1/place?q=place_id:ChIJCYatP-lTHBURPcHWD0t0izA&key=AIzaSyByi1DD5epGLTxcUvllDCiXjwa5H8uQ3AU&zoom=15&language=he" style="width:100%;height:100%;margin:0;padding:0;border:none;" scrolling="no" allowfullscreen></iframe>
+                
+            <!-- Script -->
+            <script type="text/javascript">
+                jQuery(function($) {
+                    var iframeLoaded = false;
+                    var iframeLoadTimeout = null;
+                    
+                    // Catch Google Maps embed errors (e.g., "Cannot read properties of undefined (reading 'clientHeight')")
+                    window.onerror = function(message, source, lineno, colno, error) {
+                        if (message && (
+                            message.indexOf('clientHeight') !== -1 || 
+                            message.indexOf('Google Maps') !== -1 ||
+                            (source && source.indexOf('maps.google') !== -1)
+                        )) {
+                            mapAutoRefresh.doRefresh();
+                            return true; // Prevent error from showing in console
+                        }
+                        return false;
+                    };
+                    
+                    // on iframe load remove the skeleton
+                    $('.map-frame').on('load', function() {
+                        iframeLoaded = true;
+                        clearTimeout(iframeLoadTimeout);
+                        $('.gmap-skeleton').remove();
+                        
+                        // Try to detect error page by checking iframe dimensions
+                        var $iframe = $(this);
+                        setTimeout(function() {
+                            try {
+                                // If iframe has no content or very small, might be an error
+                                if ($iframe[0].contentWindow && $iframe[0].contentWindow.document) {
+                                    var doc = $iframe[0].contentWindow.document;
+                                    // Check for error indicators
+                                    if (doc.title && doc.title.toLowerCase().indexOf('error') !== -1) {
+                                        mapAutoRefresh.doRefresh();
+                                    }
+                                }
+                            } catch (e) {
+                                // Cross-origin - can't access, which is normal for Google Maps
+                            }
+                        }, 1000);
+                    });
+                    
+                    // on iframe error reload the page
+                    $('.map-frame').on('error', function() {
+                        mapAutoRefresh.doRefresh();
+                    });
+                    
+                    // Fallback: if iframe doesn't load within 15 seconds, try refresh
+                    iframeLoadTimeout = setTimeout(function() {
+                        if (!iframeLoaded) {
+                            mapAutoRefresh.doRefresh();
+                        }
+                    }, 15000);
+                });
+            </script>
+        </div>
+</body>
+</html>
