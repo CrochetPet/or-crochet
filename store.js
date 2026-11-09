@@ -1,8 +1,10 @@
+import {resolveAsset,repairAssets,originalOrder} from './asset-resolver.mjs';
 const ROOT=new URL('.',import.meta.url).pathname;
 const $=(s,c=document)=>c.querySelector(s),$$=(s,c=document)=>Array.from(c.querySelectorAll(s));
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const link=p=>ROOT+p.replace(/^\//,'');
-const image=p=>p?.startsWith('/')?link(p):'';
+const image=p=>{const fixed=resolveAsset(p);return fixed!==p?fixed:p?.startsWith('/')?link(p):''};
+repairAssets(document);
 let catalog,server=false,cart=[];
 try{cart=JSON.parse(localStorage.getItem('crochet-cart')||'[]');if(!Array.isArray(cart))cart=[]}catch{}
 let apiRoot=ROOT;
@@ -30,7 +32,7 @@ for(const container of $$('.products-container')){
  const originalCards=$$('.e-p-box',container),ids=originalCards.map(e=>$('.product-data-obj',e)?.dataset.uniqueId).filter(Boolean),template=originalCards[0];
  let list=products;const q=new URLSearchParams(location.search).get('category');const category=q||(path.startsWith('/חנות/')&&!current?path.split('/').slice(2).map(x=>x.replaceAll('-',' ')).join(' / '):null);
  if(category)list=list.filter(p=>p.categories.includes(category));
- const preferred=ids.map(id=>list.find(p=>p.id===id)).filter(Boolean);list=[...preferred,...list.filter(p=>!ids.includes(p.id))];
+ const preferred=ids.map(id=>list.find(p=>p.id===id)).filter(Boolean);list=path==='/'?preferred:[...preferred,...list.filter(p=>!ids.includes(p.id))];
  if(current)list=list.filter(p=>p.id!==current.id).slice(0,3);
  container.innerHTML='';
  if(template){for(const p of list){const box=template.cloneNode(true),obj=$('.product-data-obj',box);if(obj)obj.dataset.uniqueId=p.id;
@@ -74,7 +76,7 @@ for(const form of $$('form:not(.ind-checkout)')){
 const known=new Set($$('.e-c-box h4').map(e=>e.textContent.trim()));const extra=[...new Set(products.flatMap(p=>p.categories))].filter(x=>!known.has(x)&&!x.includes(' / '));const categoryWrap=$('.e-c-box')?.parentElement;if(categoryWrap&&path==='/'){for(const name of extra){const a=document.createElement('a');a.className='ind-static-action';a.href=link('/חנות')+'?category='+encodeURIComponent(name);a.textContent=name;categoryWrap.append(a)}}
 persistCart();
 
-import('./live.js');
+import('./live.js?v=crystal-2');
 
 // Header navigation and restored original hero photograph.
 const adminAnchor=document.createElement('a');adminAnchor.href=link('/admin/');adminAnchor.className='ind-admin-link';adminAnchor.textContent='ניהול';adminAnchor.setAttribute('aria-label','כניסה לפאנל הניהול');
