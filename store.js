@@ -1,9 +1,10 @@
+import {mountPayments} from './payment.js';
 import {resolveAsset,repairAssets,originalOrder} from './asset-resolver.mjs';
 const ROOT=new URL('.',import.meta.url).pathname;
 const $=(s,c=document)=>c.querySelector(s),$$=(s,c=document)=>Array.from(c.querySelectorAll(s));
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const link=p=>ROOT+p.replace(/^\//,'');
-const image=p=>{const fixed=resolveAsset(p);return fixed!==p?fixed:p?.startsWith('/')?link(p):''};
+const image=p=>{if(typeof p==='string'&&p.length<=1000000&&/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(p))return p;const fixed=resolveAsset(p);return fixed!==p?fixed:p?.startsWith('/')?link(p):''};
 repairAssets(document);
 let catalog,server=false,cart=[];
 try{cart=JSON.parse(localStorage.getItem('crochet-cart')||'[]');if(!Array.isArray(cart))cart=[]}catch{}
@@ -27,7 +28,7 @@ $$('a[href*="wa.me"]').forEach(e=>e.href='https://wa.me/'+settings.whatsapp);
 $('.ind-mobile')?.addEventListener('click',e=>{const menu=$('#main-menu'),b=e.currentTarget;menu.classList.toggle('is-open');b.setAttribute('aria-expanded',menu.classList.contains('is-open'))});
 const path=decodeURIComponent(location.pathname).replace(ROOT==='/'?/^$/:new RegExp('^'+ROOT.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')),'/').replace(/\/$/,'')||'/';
 const current=products.find(p=>p.slug===path);
-function card(p){return `<article data-product-id="${esc(p.id)}"><a href="${esc(link(p.slug))}"><img loading="lazy" src="${esc(image(p.images[0]))}" alt="${esc(p.name)}"><h4>${esc(p.name)}</h4><div>₪${Number(p.price).toLocaleString('he-IL')}</div></a>${!p.inStock?'<span class="ind-no-stock">אזל מהמלאי</span>':''}<button data-add="${esc(p.id)}" ${!p.inStock?'disabled':''}>הוספה לעגלה</button></article>`}
+function card(p){return `<article data-product-id="${esc(p.id)}"><a href="${esc(link(p.slug))}"><img loading="lazy" src="${esc(image(p.images[0]))}" alt="${esc(p.imageCaptions?.[0]||p.name)}"><h4>${esc(p.name)}</h4><div>₪${Number(p.price).toLocaleString('he-IL')}</div></a>${!p.inStock?'<span class="ind-no-stock">אזל מהמלאי</span>':''}<button data-add="${esc(p.id)}" ${!p.inStock?'disabled':''}>הוספה לעגלה</button></article>`}
 for(const container of $$('.products-container')){
  const originalCards=$$('.e-p-box',container),ids=originalCards.map(e=>$('.product-data-obj',e)?.dataset.uniqueId).filter(Boolean),template=originalCards[0];
  let list=products;const q=new URLSearchParams(location.search).get('category');const category=q||(path.startsWith('/חנות/')&&!current?path.split('/').slice(2).map(x=>x.replaceAll('-',' ')).join(' / '):null);
@@ -37,8 +38,8 @@ for(const container of $$('.products-container')){
  container.innerHTML='';
  if(template){for(const p of list){const box=template.cloneNode(true),obj=$('.product-data-obj',box);if(obj)obj.dataset.uniqueId=p.id;
  for(const a of $$('a[href]',box))a.href=link(p.slug);
- for(const e of $$('[role="img"],.product-image[data-bg]',box)){const src=image(p.images[e.classList.contains('second-image')&&p.images[1]?1:0]);e.style.backgroundImage='url("'+src+'")';e.setAttribute('aria-label',p.name);e.dataset.bg=src}
- for(const img of $$('img',box)){img.src=image(p.images[0]);img.alt=p.name}
+ for(const e of $$('[role="img"],.product-image[data-bg]',box)){const src=image(p.images[e.classList.contains('second-image')&&p.images[1]?1:0]);e.style.backgroundImage='url("'+src+'")';e.setAttribute('aria-label',p.imageCaptions?.[0]||p.name);e.dataset.bg=src}
+ for(const img of $$('img',box)){img.src=image(p.images[0]);img.alt=p.imageCaptions?.[0]||p.name}
  for(const e of $$('.product-title a',box))e.textContent=p.name;
  const price=$('[data-type="price"]',box);if(price)price.textContent=p.price;
  const ribbon=$('.ribbonsLabels',box);if(ribbon)ribbon.innerHTML=p.inStock?'':'<span class="background-primary-color product-ribbon-banner">אזל מהמלאי</span>';
@@ -51,7 +52,7 @@ if(current){
  const title=$('h1');if(title)title.textContent=current.name;document.title=current.name+' | '+settings.name;
  const description=$('.product-details .description');if(description)description.textContent=current.description;
  const price=$('#productPrice');if(price)price.textContent='₪'+current.price;
- const gallery=$('#productGaleries');if(gallery){gallery.innerHTML=`<img class="ind-gallery-main" src="${esc(image(current.images[0]))}" alt="${esc(current.name)}"><div class="ind-gallery-thumbs">${current.images.map((s,i)=>`<button type="button" data-gallery-src="${esc(image(s))}" aria-label="תמונה ${i+1} של ${esc(current.name)}"><img src="${esc(image(s))}" alt=""></button>`).join('')}</div>`;$$('[data-gallery-src]',gallery).forEach(b=>b.addEventListener('click',()=>$('.ind-gallery-main',gallery).src=b.dataset.gallerySrc))}
+ const gallery=$('#productGaleries');if(gallery){gallery.innerHTML=`<img class="ind-gallery-main" src="${esc(image(current.images[0]))}" alt="${esc(current.imageCaptions?.[0]||current.name)}"><p class="ind-gallery-caption">${esc(current.imageCaptions?.[0]||'')}</p><div class="ind-gallery-thumbs">${current.images.map((s,i)=>`<button type="button" data-gallery-src="${esc(image(s))}" data-gallery-caption="${esc(current.imageCaptions?.[i]||'')}" aria-label="${esc(current.imageCaptions?.[i]||'תמונה '+(i+1)+' של '+current.name)}"><img src="${esc(image(s))}" alt=""></button>`).join('')}</div>`;$$('[data-gallery-src]',gallery).forEach(b=>b.addEventListener('click',()=>{const main=$('.ind-gallery-main',gallery);main.src=b.dataset.gallerySrc;main.alt=b.dataset.galleryCaption||current.name;$('.ind-gallery-caption',gallery).textContent=b.dataset.galleryCaption}))}
  const buy=$('.orderButtonPopup');if(buy){buy.setAttribute('role','button');buy.setAttribute('tabindex','0');buy.setAttribute('aria-disabled',!current.inStock);buy.textContent=current.inStock?'הוספה לעגלה':'אזל מהמלאי';buy.addEventListener('click',e=>{e.preventDefault();add(current.id,Math.max(1,Math.min(99,Number($('.quantity_container input')?.value)||1)))});buy.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();buy.click()}})}
  for(const b of $$('.quantity-btn'))b.addEventListener('click',()=>{const input=$('.quantity_container input'),n=Number(input.value)||1;input.value=Math.min(99,Math.max(1,n+(b.classList.contains('quantity-minus-btn')?-1:1)))})
  const tab=$('[href="#attributesTab"]');if(tab)tab.addEventListener('click',e=>{e.preventDefault();$('#attributesTab')?.classList.toggle('active')});
@@ -63,6 +64,7 @@ for(const carousel of $$('.carousel')){const items=$$('.item',carousel);if(!item
 // There is no payment capture: visitors submit an order request for confirmation by the shop.
 const dialog=document.createElement('dialog');dialog.className='ind-dialog';dialog.setAttribute('aria-label','עגלת קניות');document.body.append(dialog);
 function renderCart(){let total=0;const rows=cart.map(i=>{const p=products.find(p=>p.id===i.id);if(!p)return'';total+=p.price*i.quantity;return`<div class="ind-cart-row"><img src="${esc(image(p.images[0]))}" alt="${esc(p.name)}"><div><strong>${esc(p.name)}</strong><br>₪${p.price} ליחידה</div><input type="number" min="1" max="99" value="${i.quantity}" data-cart-quantity="${esc(p.id)}" aria-label="כמות ${esc(p.name)}"><button data-remove="${esc(p.id)}">הסרה</button></div>`}).join('');dialog.innerHTML=`<div class="ind-dialog-head"><h2>עגלת קניות</h2><button class="ind-close" aria-label="סגירת עגלה">×</button></div><div class="ind-dialog-body">${rows||'<p>העגלה שלך ריקה.</p>'}${rows?`<div class="ind-total">סה״כ: ₪${total.toLocaleString('he-IL')}</div><p>בקשת הזמנה. המחיר וזמינות המוצרים יאושרו על ידי החנות לפני תשלום.</p><form class="ind-checkout"><label>שם מלא<input name="name" required autocomplete="name" maxlength="200"></label><label>טלפון<input name="phone" type="tel" required pattern="[-+()0-9\\s]{7,25}" autocomplete="tel"></label><label>דואר אלקטרוני<input name="email" type="email" autocomplete="email"></label><label>כתובת למשלוח<input name="address" autocomplete="street-address"></label><label>הערות להזמנה<textarea name="note" rows="2"></textarea></label><button class="ind-submit">${server?'שליחת בקשת הזמנה':'הכנת בקשת הזמנה בוואטסאפ'}</button><div role="status" class="ind-form-status"></div></form>`:''}</div>`;
+ if(rows){const paymentBox=document.createElement('section');$('.ind-total',dialog).after(paymentBox);mountPayments(paymentBox,total,settings)}
  $('.ind-close',dialog).onclick=()=>dialog.close();$$('[data-remove]',dialog).forEach(b=>b.onclick=()=>{cart=cart.filter(i=>i.id!==b.dataset.remove);persistCart();renderCart()});$$('[data-cart-quantity]',dialog).forEach(input=>input.onchange=()=>{const p=products.find(p=>p.id===input.dataset.cartQuantity);const n=Math.max(1,Math.min(99,Math.floor(Number(input.value)||1),p.stock??99));cart.find(i=>i.id===p.id).quantity=n;persistCart();renderCart()});const form=$('form',dialog);if(form)form.onsubmit=async e=>{e.preventDefault();if(!form.reportValidity())return;const data=Object.fromEntries(new FormData(form));data.items=cart.map(i=>({...i}));const button=$('button',form),status=$('[role="status"]',form);button.disabled=true;try{if(!server){const text=`בקשת הזמנה מאת ${data.name}\nטלפון: ${data.phone}\n${cart.map(i=>{const p=products.find(p=>p.id===i.id);return`${p.name} × ${i.quantity} — ₪${p.price*i.quantity}`}).join('\n')}\nסה״כ מוצרים: ₪${total}\nכתובת: ${data.address}\nהערות: ${data.note}`;showPrepared(status,text,'הבקשה מוכנה. יש ללחוץ על הקישור ולשלוח בוואטסאפ.');}else{const result=await api('orders',data);cart=[];persistCart();dialog.innerHTML=`<div class="ind-dialog-head"><h2>הבקשה התקבלה</h2><button class="ind-close" aria-label="סגירה">×</button></div><div class="ind-dialog-body"><p>מספר בקשה: ${esc(result.id)}</p><p>ניצור איתך קשר לאישור ההזמנה והתשלום.</p></div>`;$('.ind-close',dialog).onclick=()=>dialog.close()}}catch(err){status.textContent=err.message}finally{button.disabled=false}}}
 function showPrepared(node,text,message){node.innerHTML=`<p>${esc(message)}</p><a class="ind-static-action" target="_blank" rel="noopener" href="https://wa.me/${esc(settings.whatsapp)}?text=${encodeURIComponent(text)}">פתיחת וואטסאפ לשליחה</a>`}
 $$('[data-open-cart]').forEach(b=>b.addEventListener('click',()=>{renderCart();dialog.showModal()}));dialog.addEventListener('click',e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close()}});
@@ -76,7 +78,7 @@ for(const form of $$('form:not(.ind-checkout)')){
 const known=new Set($$('.e-c-box h4').map(e=>e.textContent.trim()));const extra=[...new Set(products.flatMap(p=>p.categories))].filter(x=>!known.has(x)&&!x.includes(' / '));const categoryWrap=$('.e-c-box')?.parentElement;if(categoryWrap&&path==='/'){for(const name of extra){const a=document.createElement('a');a.className='ind-static-action';a.href=link('/חנות')+'?category='+encodeURIComponent(name);a.textContent=name;categoryWrap.append(a)}}
 persistCart();
 
-import('./live.js?v=crystal-2');
+import('./live.js?v=persist-4');
 
 // Header navigation and restored original hero photograph.
 const adminAnchor=document.createElement('a');adminAnchor.href=link('/admin/');adminAnchor.className='ind-admin-link';adminAnchor.textContent='ניהול';adminAnchor.setAttribute('aria-label','כניסה לפאנל הניהול');
