@@ -73,3 +73,5 @@ for(const form of $$('form:not(.ind-checkout)')){
 // Add access to categories introduced in the administrator catalog.
 const known=new Set($$('.e-c-box h4').map(e=>e.textContent.trim()));const extra=[...new Set(products.flatMap(p=>p.categories))].filter(x=>!known.has(x)&&!x.includes(' / '));const categoryWrap=$('.e-c-box')?.parentElement;if(categoryWrap&&path==='/'){for(const name of extra){const a=document.createElement('a');a.className='ind-static-action';a.href=link('/חנות')+'?category='+encodeURIComponent(name);a.textContent=name;categoryWrap.append(a)}}
 persistCart();
+
+import('./live.js');
