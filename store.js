@@ -1,4 +1,4 @@
-import {mountPayments} from './payment.js?v=contact-required-3';
+import {mountPayments} from './payment.js?v=aligned-4';
 import {createCartRecovery} from './cart-recovery.mjs';
 import {resolveAsset,repairAssets,originalOrder} from './asset-resolver.mjs';
 const ROOT=new URL('.',import.meta.url).pathname;
